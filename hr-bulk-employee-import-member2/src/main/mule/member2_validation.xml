@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+        http://www.mulesoft.org/schema/mule/core
+        http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/ee/core
+        http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+        <configuration-properties file="config.properties"/>
+
+    <sub-flow name="employee-validation-subflow">
+        <ee:transform doc:name="Employee Validation">
+            <ee:message>
+                <ee:set-payload resource="dwl/employee-validation.dwl"/>
+            </ee:message>
+        </ee:transform>
+    </sub-flow>
+
+    <sub-flow name="reference-enrichment-subflow">
+        <ee:transform doc:name="Reference Enrichment">
+            <ee:message>
+                <ee:set-payload resource="dwl/reference-enrichment.dwl"/>
+            </ee:message>
+        </ee:transform>
+    </sub-flow>
+
+    <flow name="member2-validation-pipeline">
+        <flow-ref name="employee-validation-subflow"
+                  doc:name="Validate Employees"/>
+
+        <flow-ref name="reference-enrichment-subflow"
+                  doc:name="Enrich References"/>
+
+        <logger level="INFO"
+                doc:name="Validation Summary"
+                message="#['Member 2 | Total: ' ++ (payload.totalCount as String) ++ ' | Valid: ' ++ (payload.validCount as String) ++ ' | Rejected: ' ++ (payload.rejectedCount as String)]"/>
+    </flow>
+    
+<flow name="test-member2-validation">
+    <scheduler>
+        <scheduling-strategy>
+            <fixed-frequency frequency="60000" startDelay="10000"/>
+        </scheduling-strategy>
+    </scheduler>
+
+    <ee:transform doc:name="Sample Employee Input">
+        <ee:message>
+            <ee:set-payload><![CDATA[
+%dw 2.0
+output application/json
+---
+[
+    {
+        employeeId: "EMP10041",
+        firstName: "Karthik",
+        lastName: "Subramanian",
+        dateOfBirth: "1994-03-18",
+        dateOfJoining: "2026-09-15",
+        officialEmail: "karthik.s@company.com",
+        mobile: "+91-9884012345",
+        departmentCode: "DEPT-ENG",
+        designation: "Senior Engineer",
+        locationCode: "LOC-CHN-01",
+        employmentType: "PERMANENT",
+        managerId: "EMP10002"
+    },
+    {
+        employeeId: "EMP10045",
+        firstName: "Rahul",
+        lastName: "Verma",
+        dateOfBirth: "1988-05-14",
+        dateOfJoining: "2026-09-20",
+        officialEmail: "rahul.v@company.com",
+        mobile: "+91-9884012349",
+        departmentCode: "DEPT-XXX",
+        designation: "Manager",
+        locationCode: "LOC-CHN-01",
+        employmentType: "PERMANENT",
+        managerId: "EMP10003"
+    }
+]
+            ]]></ee:set-payload>
+        </ee:message>
+    </ee:transform>
+
+    <flow-ref name="member2-validation-pipeline"/>
+
+    <logger level="INFO"
+            message="#['TEST RESULT: ' ++ write(payload, 'application/json')]"/>
+</flow>
+    
+
+</mule>
